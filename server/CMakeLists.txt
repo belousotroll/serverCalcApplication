@@ -8,9 +8,18 @@ if (NOT BOOST_FOUND)
     set(BOOST_ROOT "/opt/boost")
 endif ()
 
-find_package(Boost 1.69.0 REQUIRED)
+find_package(Boost 1.69.0 COMPONENTS system REQUIRED)
 
-add_executable(${PROJECT_NAME} main.cpp)
+set(SERVER_SOURCES
+        Server.h Server.cpp
+        Connection.h Connection.cpp
+        ConnectionPool.h ConnectionPool.cpp)
+
+add_executable(${PROJECT_NAME} main.cpp ${SERVER_SOURCES})
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${Boost_INCLUDE_DIR})
-target_link_libraries(${PROJECT_NAME} PUBLIC pthread)
+
+# Boost::asio работает с потоками, поэтому необходимо подключить библиотеку pthread.
+# На Windows нужно подключить библиотеки для работы с winsocks (ws2_32.dll ...)
+target_link_libraries(${PROJECT_NAME} PUBLIC pthread Boost::system)
+
