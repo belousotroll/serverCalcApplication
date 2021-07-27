@@ -19,7 +19,7 @@ public:
     ConnectionPool(const ConnectionPool& other) = delete;
     ConnectionPool& operator=(const ConnectionPool& other) = delete;
 
-    void insert(ConnectionPtr&& connection);
+    void insert(ConnectionPtr connection);
     void remove(ConnectionPtr connection);
     void removeAll();
 

@@ -3,14 +3,6 @@
 #include "Connection.h"
 #include "ConnectionPool.h"
 
-//Connection::Connection(boost::asio::ip::tcp::socket&& socket,
-//                       ConnectionPool& connectionPool)
-//    : m_socket(std::move(socket))
-//    , mr_connectionPool(connectionPool)
-//{
-//    std::cout << "ALIVE\n";
-//}
-
 Connection::Connection(boost::asio::io_context& context,
                        ConnectionPool& connectionPool)
         : m_socket(context)
@@ -31,9 +23,22 @@ void Connection::read()
                     boost::asio::placeholders::bytes_transferred));
 }
 
-void Connection::handleRead(const boost::system::error_code &errorCode, std::size_t bytes_transferred)
+void Connection::handleRead(const boost::system::error_code &errorCode, std::size_t bytesTransferred)
 {
     if (errorCode) return;
+    // Мы помещаем данные из буфера чтения в <string_view> (наблюдатель), но без последнего
+    // байта, так как он содержит в себе символ конца строки ('\n'), который нам не нужен.
+    const std::string_view unhandledRequestData(m_readBuffer.data(), bytesTransferred - 1);
+    // Определяем, какой тип запроса прислал клиент.
+    const auto requestType = m_requestHandler.defineRequestType(unhandledRequestData);
+
+    /*сложная или не очень реализация конечного автомата (хотя вряд ли... заебно)*/
+
+    // Обрабатывает запрос.
+    // @todo Поменять интерфейс обработчика запросов, пока что он сосет (мы два раза
+    //       используем одни и те же данные ...
+    m_requestHandler.handle(unhandledRequestData);
+    // Помещаем в очередь задачу на запись и отправку данных пользователю.
     write();
 }
 
@@ -48,14 +53,10 @@ void Connection::write()
     );
 }
 
-void Connection::handleWrite(const boost::system::error_code &code, std::size_t bytes_transferred)
+void Connection::handleWrite(const boost::system::error_code &code, std::size_t bytesTransferred)
 {
-    if (code) {
-        std::cerr << "Error (writing): " << code.message() << std::endl;
-        m_socket.close();
-    }
-
-    mr_connectionPool.remove(shared_from_this());
+    if (code) { m_socket.close(); }
+    read();
 }
 
 void Connection::startHandling()

@@ -3,11 +3,10 @@
 
 #include <iostream>
 
-void ConnectionPool::insert(ConnectionPool::ConnectionPtr&& connection)
+void ConnectionPool::insert(ConnectionPool::ConnectionPtr connection)
 {
     m_connections.insert(connection);
-    connection->startHandling();
-}
+    connection->startHandling();}
 
 void ConnectionPool::remove(ConnectionPool::ConnectionPtr connection)
 {

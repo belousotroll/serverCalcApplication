@@ -1,14 +1,17 @@
 #ifndef SERVER_SERVER_H
 #define SERVER_SERVER_H
 
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/ip/tcp.hpp>
 #include <boost/asio.hpp>
 
 #include "ConnectionPool.h"
 
-
 class Connection;
 
 class Server {
+
+    using ConnectionPtr = std::shared_ptr<Connection>;
 
 public:
     /// Параметризированный конструктор класса.
@@ -24,7 +27,7 @@ public:
 
 private /*methods*/:
     void accept();
-    void handleAccept(std::shared_ptr<Connection> connectionPtr, const boost::system::error_code &errorCode);
+    void handleAccept(ConnectionPtr connectionPtr, const boost::system::error_code &errorCode);
 
 private /*members*/:
     boost::asio::io_context         m_context;
