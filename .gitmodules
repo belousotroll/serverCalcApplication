@@ -1,3 +1,3 @@
-[submodule "ozo"]
+[submodule "external/ozo"]
 	path = external/ozo
 	url = https://github.com/yandex/ozo
