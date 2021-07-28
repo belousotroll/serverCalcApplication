@@ -1,3 +1,5 @@
+#define  BOOST_HANA_CONFIG_ENABLE_STRING_UDL 1
+
 #include <iostream>
 #include <boost/asio.hpp>
 
