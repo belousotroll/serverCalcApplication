@@ -1,11 +1,19 @@
 #include "Server.h"
-#include "Connection.h"
 
 #include <iostream>
+#include <boost/bind.hpp>
+#include <boost/asio/placeholders.hpp>
+#include <boost/asio/spawn.hpp>
 
-Server::Server(boost::asio::ip::tcp::endpoint &endpoint)
-        : m_context()
-        , m_acceptor(m_context, endpoint)
+#include "PostgreSQLDatabase.h"
+#include "Connection.h"
+
+Server::Server(boost::asio::io_context& context,
+               PostgreSQLDatabase& database,
+               boost::asio::ip::tcp::endpoint& endpoint)
+               : mr_context(context)
+               , mr_databaseAccessor(database)
+               , m_acceptor(mr_context, endpoint)
 {
     std::cout << "Статус сервера: работает нармальна! НАР-МАЛЬ-НА! НАРМАЛЬНА РАБОТАЕТ!" << std::endl;
     accept();
@@ -18,7 +26,7 @@ void Server::accept()
     ///        лямбда-функцию с boost::asio::ip::tcp::socket в аргументе и исправить конструктор класса
     ///        <Connection>, проблем не будет. Этот connectionPtr куда-то деётся и уничтожается
     ///        после обрыва соединения.
-    auto connectionPtr = std::make_shared<Connection>(m_context, m_connectionPool);
+    auto connectionPtr = std::make_shared<Connection>(mr_context, mr_databaseAccessor, m_connectionPool);
     // Заставяляем ожидать соединения.
     m_acceptor.async_accept(connectionPtr->socket(),
                             boost::bind(&Server::handleAccept,
@@ -36,5 +44,5 @@ void Server::handleAccept(ConnectionPtr connectionPtr, const boost::system::erro
 
 unsigned int Server::run() {
     // Запускаем очередь задач (то есть по сути сервер).
-    return m_context.run();
+    return mr_context.run();
 }

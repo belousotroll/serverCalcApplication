@@ -8,33 +8,48 @@ if (NOT BOOST_FOUND)
     set(BOOST_ROOT "/opt/boost")
 endif()
 
-find_package(Boost 1.69.0 COMPONENTS system REQUIRED)
+find_package(Boost 1.69.0 COMPONENTS context thread coroutine REQUIRED)
 find_package(PostgreSQL 13.3 REQUIRED)
+
+set(DATABASE_SOURCES
+        database/IDatabaseAccessor.h
+        database/PostgreSQLDatabase.cpp database/PostgreSQLDatabase.h
+        database/Structures.h
+        )
 
 set(SERVER_SOURCES
         Server.cpp Server.h
         Connection.cpp Connection.h
-        ConnectionPool.cpp ConnectionPool.h
-        RequestHandler.cpp RequestHandler.h)
+        ConnectionPool.cpp ConnectionPool.h)
 
 set(EXTERNAL_LIBRARIES_DIR
         ${CMAKE_CURRENT_SOURCE_DIR}/../external)
 
-set(SERVER_TEMPLATE_HEADERS
-        Request.h)
+set(SERVER_TEMPLATE_HEADERS)
 
 add_executable(${PROJECT_NAME} main.cpp
         ${SERVER_SOURCES}
-        ${SERVER_TEMPLATE_HEADERS})
+        ${SERVER_TEMPLATE_HEADERS}
+        ${DATABASE_SOURCES}
+        )
 
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
 
+target_include_directories(${PROJECT_NAME} PUBLIC database)
 target_include_directories(${PROJECT_NAME} PUBLIC
         ${PostgreSQL_INCLUDE_DIR}
-        ${Boost_INCLUDE_DIR}
-        ${EXTERNAL_LIBRARIES_DIR}/ozo/include)
+        ${Boost_INCLUDE_DIRS}
+        ${EXTERNAL_LIBRARIES_DIR}/ozo/include
+        ${EXTERNAL_LIBRARIES_DIR}/ozo/contrib/resource_pool/include)
+
+target_link_directories(${PROJECT_NAME} PUBLIC ${Boost_LIBRARIES})
 
 # Boost::asio работает с потоками, поэтому необходимо подключить библиотеку pthread.
 # На Windows нужно подключить библиотеки для работы с winsocks (ws2_32.dll ...)
-target_link_libraries(${PROJECT_NAME} PUBLIC pthread)
+target_link_libraries(${PROJECT_NAME} PUBLIC
+        pthread
+        pqxx pq
+
+        Boost::context
+        Boost::coroutine)
 

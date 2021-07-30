@@ -8,6 +8,7 @@
 #include "ConnectionPool.h"
 
 class Connection;
+class PostgreSQLDatabase;
 
 class Server {
 
@@ -15,7 +16,9 @@ class Server {
 
 public:
     /// Параметризированный конструктор класса.
-    Server(boost::asio::ip::tcp::endpoint& endpoint);
+    explicit Server(boost::asio::io_context& context,
+                    PostgreSQLDatabase& database,
+                    boost::asio::ip::tcp::endpoint& endpoint);
     ~Server() = default;
 
     /// Явно запрещает любое копирование данных.
@@ -30,9 +33,11 @@ private /*methods*/:
     void handleAccept(ConnectionPtr connectionPtr, const boost::system::error_code &errorCode);
 
 private /*members*/:
-    boost::asio::io_context         m_context;
+    boost::asio::io_context&        mr_context;
     boost::asio::ip::tcp::acceptor  m_acceptor;
     ConnectionPool                  m_connectionPool;
+
+    PostgreSQLDatabase&             mr_databaseAccessor;
 };
 
 
