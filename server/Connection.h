@@ -64,12 +64,11 @@ static auto shift(const std::string_view unhandled, uint8_t n) {
 };
 
 static auto isValidRequest(Connection::State currectState, const std::string_view request) {
-    // @note Можно попробовать сделать constexpr map на шаблонах.
+    // @todo Можно попробовать сделать constexpr map на шаблонах.
     static const std::map<Connection::State, Connection::State> transitionTable = {
-            {Connection::State::login,     Connection::State::password},  // login    -> password
-            {Connection::State::password,  Connection::State::calc},      // password -> calc
-            {Connection::State::calc,      Connection::State::login},     // calc     -> login
-            {Connection::State::logout,    Connection::State::login}      // logout   -> login
+            {Connection::State::login,     Connection::State::password}, // login    -> password
+            {Connection::State::password,  Connection::State::calc},     // password -> calc
+            {Connection::State::calc,    Connection::State::calc}        // calc     -> calc ...
     };
 
     /// @todo Добавить поддержку широких (последовательных) пробелов.
@@ -95,9 +94,11 @@ static auto isValidRequest(Connection::State currectState, const std::string_vie
         requestType = Connection::State::calc;
     } else if (const auto logout_position = request.find("logout"); logout_position == 0) {
         requestType = Connection::State::logout;
+    } else {
+        return false;
     }
 
-    return requestType == transitionTable.at(currectState);
+    return requestType == transitionTable.at(currectState) || requestType == Connection::logout;
 }
 
 #endif //SERVER_SESSION_H

@@ -1,3 +1,4 @@
+
 #define BOOST_COROUTINES_NO_DEPRECATION_WARNING 0;
 
 #include <boost/asio/io_context.hpp>
@@ -8,11 +9,11 @@
 
 int main(int argc, char* argv[])
 {
-//    if (argc != 3)
-//    {
-//        std::cerr << "Серверм нэм мрамботает пампромбуйте тамк: <адрес> <порт> \n";
-//        return EXIT_FAILURE;
-//    }
+    if (argc != 3)
+    {
+        std::cerr << "Серверм нэм мрамботает пампромбуйте тамк: <адрес> <порт> \n";
+        return EXIT_FAILURE;
+    }
 
     try {
         using namespace std::string_view_literals;
@@ -20,8 +21,8 @@ int main(int argc, char* argv[])
         boost::asio::io_context context;
 
         // Необходимы для создания точки доступа.
-        auto address = boost::asio::ip::address::from_string("127.0.0.1"/**/);
-        auto port    = std::atoi("1234");
+        auto address = boost::asio::ip::address::from_string(argv[1]);
+        auto port    = std::atoi(argv[2]);
         // Создаем точку доступа по заданным через консоль адресу и порту.
         boost::asio::ip::tcp::endpoint endpoint(address, port);
 

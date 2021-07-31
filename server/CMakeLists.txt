@@ -14,8 +14,7 @@ find_package(PostgreSQL 13.3 REQUIRED)
 set(DATABASE_SOURCES
         database/IDatabaseAccessor.h
         database/PostgreSQLDatabase.cpp database/PostgreSQLDatabase.h
-        database/Structures.h
-        )
+        database/Structures.h)
 
 set(SERVER_SOURCES
         Server.cpp Server.h
@@ -23,14 +22,17 @@ set(SERVER_SOURCES
         ConnectionPool.cpp ConnectionPool.h)
 
 set(EXTERNAL_LIBRARIES_DIR
-        ${CMAKE_CURRENT_SOURCE_DIR}/../external)
+        ../external)
 
-set(SERVER_TEMPLATE_HEADERS)
+set(TINYEXPR
+        ${EXTERNAL_LIBRARIES_DIR}/tinyexpr/tinyexpr.c
+        ${EXTERNAL_LIBRARIES_DIR}/tinyexpr/tinyexpr.h)
+
 
 add_executable(${PROJECT_NAME} main.cpp
         ${SERVER_SOURCES}
-        ${SERVER_TEMPLATE_HEADERS}
         ${DATABASE_SOURCES}
+        ${TINYEXPR}
         )
 
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
@@ -40,7 +42,8 @@ target_include_directories(${PROJECT_NAME} PUBLIC
         ${PostgreSQL_INCLUDE_DIR}
         ${Boost_INCLUDE_DIRS}
         ${EXTERNAL_LIBRARIES_DIR}/ozo/include
-        ${EXTERNAL_LIBRARIES_DIR}/ozo/contrib/resource_pool/include)
+        ${EXTERNAL_LIBRARIES_DIR}/ozo/contrib/resource_pool/include
+        ${EXTERNAL_LIBRARIES_DIR}/tinyexpr)
 
 target_link_directories(${PROJECT_NAME} PUBLIC ${Boost_LIBRARIES})
 
@@ -49,7 +52,6 @@ target_link_directories(${PROJECT_NAME} PUBLIC ${Boost_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} PUBLIC
         pthread
         pqxx pq
-
         Boost::context
         Boost::coroutine)
 

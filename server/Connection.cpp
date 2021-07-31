@@ -53,8 +53,7 @@ void Connection::handleRead(const boost::system::error_code &errorCode, std::siz
                 std::clog << "password ...\n";
                 m_user.password = shift(request, 9);
                 // Делаем запрос в базу данных.
-                const auto [id, balance] = mr_database.auth(m_user,
-                                                            yield);
+                const auto [id, balance] = mr_database.auth(m_user, yield);
                 // Пустое значение можно интерпретировать как отсутствие пользователя в базе данных.
                 // Прерываем операцию, возвращаемся к изначальному состоянию.
                 if (!id && !balance) {
@@ -74,13 +73,9 @@ void Connection::handleRead(const boost::system::error_code &errorCode, std::siz
             case calc: {
                 std::clog << "calc ...\n";
                 m_user.expression = shift(request, 5);
-
-                /* Манипуляции с данными ...       */
-                /* ЧИКИ-ПИКИ МИНИПУЛЭТИОН          */
-                /* Конец манипуляции с данными ... */
-
                 // Записываем результат сложных математических операций.
                 m_user.resultOfExpression = "2";
+
                 // Если ... (пока не придумал, хочу спать ...)
                 if (mr_database.sendCalcResult(m_user, yield)) {
                     // ...
@@ -89,8 +84,7 @@ void Connection::handleRead(const boost::system::error_code &errorCode, std::siz
                 break;
             }
             case logout:
-                // Разрываем соединение с сервером (или чем там ...)
-                mr_connectionPool.remove(shared_from_this());
+                m_currentState = login;
                 break;
         }
     };
@@ -113,8 +107,11 @@ void Connection::write()
 
 void Connection::handleWrite(const boost::system::error_code &code, std::size_t bytesTransferred)
 {
-    if (code) { m_socket.close(); }
-    read();
+    if (!code) {
+        read();
+    }
+
+    mr_connectionPool.remove(shared_from_this());
 }
 
 void Connection::startHandling()
