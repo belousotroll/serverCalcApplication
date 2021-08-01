@@ -65,18 +65,16 @@ bool PostgreSQLDatabase::sendCalcResult(
     using namespace std::chrono_literals;
 
     // Хранит в себе результат запроса
-    // @todo Добавить поддержку кастомных типов.
     ozo::rows_of<std::optional<std::int32_t>> result;
     // Содержит в себе код ошибки.
     ozo::error_code errorCode;
-
     // Формируем запрос.
     const auto query =ozo::make_query(
             "INSERT INTO sessions(user_id, date, expression, result_of_expression) VALUES($1, NOW(), $2, $3)",
             user.id, user.expression, user.resultOfExpression);
     // Делаем запрос в базу данных.
     const auto connection = ozo::request(m_ozoConnectionPool[mr_context],
-                                         query, 5s, ozo::into(result), yield);
+                                         query, 2s, ozo::into(result), yield);
     // Обрабатываем ошибки в запросе ...
     if (errorCode) {
         handleDatabaseConnectionError<decltype(connection)>(connection, errorCode);
@@ -84,4 +82,25 @@ bool PostgreSQLDatabase::sendCalcResult(
     }
 
     return true;
+}
+
+void PostgreSQLDatabase::updateBalance(const User &user, boost::asio::yield_context &yield) {
+
+    // Для удобства ввода используем литералы.
+    using namespace ozo::literals;
+    using namespace std::chrono_literals;
+    // ...
+    ozo::rows_of<std::optional<std::int32_t>> result;
+    // ...
+    ozo::error_code errorCode;
+    // Формируем запрос.
+    const auto updateQuery = ozo::make_query(
+            "UPDATE users SET account_balance = $1 WHERE id = $2",
+            user.account_balance, user.id);
+    const auto connection = ozo::request(m_ozoConnectionPool[mr_context],
+                                               updateQuery, 2s, ozo::into(result), yield);
+    // Обрабатываем ошибки в запросе ...
+    if (errorCode) {
+        handleDatabaseConnectionError<decltype(connection)>(connection, errorCode);
+    }
 }

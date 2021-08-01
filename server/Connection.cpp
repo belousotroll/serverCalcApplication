@@ -1,10 +1,12 @@
 #include <iostream>
 
+#include <tinyexpr.h>
+
 #include <boost/bind.hpp>
 #include <boost/asio/placeholders.hpp>
 #include <boost/asio/spawn.hpp>
-#include "PostgreSQLDatabase.h"
 
+#include "PostgreSQLDatabase.h"
 #include "ConnectionPool.h"
 #include "Connection.h"
 
@@ -25,7 +27,7 @@ boost::asio::ip::tcp::socket &Connection::socket()
 void Connection::read()
 {
     m_socket.async_read_some(
-            boost::asio::buffer(m_readBuffer),
+            boost::asio::buffer(m_request),
             boost::bind(&Connection::handleRead,
                     shared_from_this(),
                     boost::asio::placeholders::error,
@@ -35,69 +37,84 @@ void Connection::read()
 void Connection::handleRead(const boost::system::error_code &errorCode, std::size_t bytesTransferred)
 {
     if (errorCode) return;
+    // Пока что считаем, что все работает корректно.
+    m_reply = "";
+    // Мы помещаем данные из буфера чтения в <string_view> (наблюдатель), но без последнего
+    // байта, так как он содержит в себе символ конца строки ('\n'), который нам не нужен.
+    const std::string_view request(m_request.data(), bytesTransferred - 1);
+    // Проверяем запрос пользователя на валидность.
+    if (!isValidRequest(m_currentState, request)) {
+        m_reply = "Некорректный запрос!\n";
+        write();
+        return;
+    }
 
     const auto coroutine = [&](boost::asio::yield_context yield) {
-        // Мы помещаем данные из буфера чтения в <string_view> (наблюдатель), но без последнего
-        // байта, так как он содержит в себе символ конца строки ('\n'), который нам не нужен.
-        const std::string_view request(m_readBuffer.data(), bytesTransferred - 1);
-        // Проверяем запрос пользователя на валидность.
-        if (isValidRequest(m_currentState, request)) return;
-
         switch (m_currentState) {
             case login:
-                std::clog << "login ...\n";
                 m_user.login = shift(request, 6);
+                // Меняем состояние.
                 m_currentState = password;
                 break;
             case password: {
-                std::clog << "password ...\n";
                 m_user.password = shift(request, 9);
                 // Делаем запрос в базу данных.
                 const auto [id, balance] = mr_database.auth(m_user, yield);
                 // Пустое значение можно интерпретировать как отсутствие пользователя в базе данных.
                 // Прерываем операцию, возвращаемся к изначальному состоянию.
                 if (!id && !balance) {
+                    m_reply = "Неверный логин или пароль! Попробуйте ещё раз!\n";
                     m_currentState = login;
-                    return;
+                    break;
                 }
-
                 std::clog << *id << ' ' << *balance << '\n';
-
                 // Присваием пользователю идентификатор и баланс счета и переходим в состояние <calc>.
                 m_user.id              = *id;
                 m_user.account_balance = *balance;
-
+                // Меняем состояние.
                 m_currentState = calc;
                 break;
             }
             case calc: {
-                std::clog << "calc ...\n";
-                m_user.expression = shift(request, 5);
-                // Записываем результат сложных математических операций.
-                m_user.resultOfExpression = "2";
-
-                // Если ... (пока не придумал, хочу спать ...)
-                if (mr_database.sendCalcResult(m_user, yield)) {
-                    // ...
+                // Если у пользователя нулевой баланс, прерываем операцию.
+                if (m_user.account_balance <= 0) {
+                    m_reply = "Недостаточно денях, извините ...\n";
+                    break;
                 }
+                // Пытаемся посчитать ...
+                int errorCode = 0;
+                m_user.expression         = shift(request, 5);
+                m_user.resultOfExpression = te_interp(m_user.expression.data(), &errorCode);
+                // Если ввели некорректные данные, прерываем операцию.
+                if (errorCode != 0) {
+                    m_reply = "Вы ввели некорректное мат. выражение! Попробуйте ещё раз!\n";
+                    break;
+                }
+
+                m_user.account_balance--;
+                // Отправляем данные в базу данных.
+                mr_database.sendCalcResult(m_user, yield);
+                mr_database.updateBalance(m_user, yield);
 
                 break;
             }
             case logout:
+                // Меняем состояние на изначальное, т.е. на <login>.
                 m_currentState = login;
                 break;
         }
+
+        // Помещаем в очередь задачу на запись и отправку данных пользователю.
+        write();
     };
-    // Запускам корутину.
+
     boost::asio::spawn(mr_context, coroutine);
-    // Помещаем в очередь задачу на запись и отправку данных пользователю.
-    write();
 }
 
 void Connection::write()
 {
     m_socket.async_write_some(
-            boost::asio::buffer(m_writeBuffer),
+            boost::asio::buffer(m_reply),
             boost::bind(&Connection::handleWrite,
                         shared_from_this(),
                         boost::asio::placeholders::error,
@@ -107,11 +124,11 @@ void Connection::write()
 
 void Connection::handleWrite(const boost::system::error_code &code, std::size_t bytesTransferred)
 {
-    if (!code) {
-        read();
+    if (code) {
+        mr_connectionPool.remove(shared_from_this());
     }
 
-    mr_connectionPool.remove(shared_from_this());
+    read();
 }
 
 void Connection::startHandling()

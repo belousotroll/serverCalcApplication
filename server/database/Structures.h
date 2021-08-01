@@ -14,7 +14,7 @@ struct User {
     (std::string , login               ),
     (std::string , password            ),
     (std::string , expression          ),
-    (std::string , resultOfExpression ));
+    (float       , resultOfExpression ));
 };
 
 #endif //SERVER_STRUCTURES_H

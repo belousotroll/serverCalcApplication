@@ -37,6 +37,8 @@ public:
 
     /// Проверяет наличие пользователя в базе данных.
     authReturnType auth(const User& user, boost::asio::yield_context& yield) override;
+    /// Обновляет баланс пользователя.
+    void updateBalance(const User& user, boost::asio::yield_context& yield) override;
     /// Отправляет результат математического операции на сервер.
     bool sendCalcResult(const User& user, const boost::asio::yield_context& yield) override;
 private:

@@ -17,15 +17,13 @@ int main(int argc, char* argv[])
 
     try {
         using namespace std::string_view_literals;
-        // ...
+        // Создаем очередь задач.
         boost::asio::io_context context;
-
         // Необходимы для создания точки доступа.
         auto address = boost::asio::ip::address::from_string(argv[1]);
         auto port    = std::atoi(argv[2]);
         // Создаем точку доступа по заданным через консоль адресу и порту.
         boost::asio::ip::tcp::endpoint endpoint(address, port);
-
         // Создаем базу данных.
         constexpr auto constring = "user=postgres host=localhost password=postgres dbname=CalcDatabase"sv;
         PostgreSQLDatabase database(context, constring);

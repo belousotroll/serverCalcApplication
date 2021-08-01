@@ -24,7 +24,7 @@ public:
     void removeAll();
 
 private:
-    std::set<ConnectionPtr> m_connections; //< Коллекция активных соединений
+    std::set<ConnectionPtr> m_connections; //!< Коллекция активных соединений
 };
 
 

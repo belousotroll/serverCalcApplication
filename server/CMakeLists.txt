@@ -28,12 +28,12 @@ set(TINYEXPR
         ${EXTERNAL_LIBRARIES_DIR}/tinyexpr/tinyexpr.c
         ${EXTERNAL_LIBRARIES_DIR}/tinyexpr/tinyexpr.h)
 
+message(STATUS "${PostgreSQL_INCLUDE_DIRS}")
 
 add_executable(${PROJECT_NAME} main.cpp
         ${SERVER_SOURCES}
         ${DATABASE_SOURCES}
-        ${TINYEXPR}
-        )
+        ${TINYEXPR})
 
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
 
@@ -47,11 +47,10 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 
 target_link_directories(${PROJECT_NAME} PUBLIC ${Boost_LIBRARIES})
 
-# Boost::asio работает с потоками, поэтому необходимо подключить библиотеку pthread.
-# На Windows нужно подключить библиотеки для работы с winsocks (ws2_32.dll ...)
 target_link_libraries(${PROJECT_NAME} PUBLIC
         pthread
-        pqxx pq
+        pqxx
+        pq
         Boost::context
         Boost::coroutine)
 

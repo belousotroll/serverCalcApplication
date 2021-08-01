@@ -15,7 +15,7 @@ Server::Server(boost::asio::io_context& context,
                , mr_databaseAccessor(database)
                , m_acceptor(mr_context, endpoint)
 {
-    std::cout << "Статус сервера: работает нармальна! НАР-МАЛЬ-НА! НАРМАЛЬНА РАБОТАЕТ!" << std::endl;
+    std::clog << "Статус сервера: работает нармальна! НАР-МАЛЬ-НА! НАРМАЛЬНА РАБОТАЕТ!" << std::endl;
     accept();
 }
 
@@ -35,7 +35,11 @@ void Server::accept()
 }
 
 void Server::handleAccept(ConnectionPtr connectionPtr, const boost::system::error_code &errorCode) {
-    if (errorCode) return;
+    if (errorCode) {
+        m_connectionPool.removeAll();
+        return;
+    }
+
     // Добавляем соединение к пулу соединений.
     m_connectionPool.insert(connectionPtr);
     // Продолжаем ожидать соединения.

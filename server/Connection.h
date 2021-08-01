@@ -10,8 +10,8 @@
 class PostgreSQLDatabase;
 class ConnectionPool;
 
-/// @class Обрабатывает соединение с клиентом.
 class Connection : public std::enable_shared_from_this<Connection> {
+
 public:
     /// Параметризированный конструктор класса.
     explicit Connection(boost::asio::io_context& context,
@@ -44,33 +44,28 @@ public:
     enum State : uint8_t  { login = 0, password, calc, logout = 4};
 
 private:
-    boost::asio::ip::tcp::socket m_socket;          //!< Сокет.
-    PostgreSQLDatabase&          mr_database;        //!< База данных.
+    boost::asio::ip::tcp::socket m_socket;    //!< Сокет.
+    PostgreSQLDatabase&          mr_database; //!< База данных.
 
-    enum { maxLength = 128u };                      //!< Максимальная длина сообщения (в байтах).
-    std::array<char, maxLength>  m_writeBuffer;     //!< Хранит данные для записи в сокет.
-    std::array<char, maxLength>  m_readBuffer;      //!< Содержит данные чтения из сокета.
+    enum { maxLength = 128u };                 //!< Максимальная длина сообщения (в байтах).
+    std::string                  m_reply;      //!< Хранит данные для записи в сокет.
+    std::array<char, maxLength>  m_request;    //!< Содержит данные чтения из сокета.
 
     boost::asio::io_context&     mr_context;        //!< Ссылка на обработчик.
     ConnectionPool&              mr_connectionPool; //!< Ссылка на коллекция подключений.
 
     // @todo Сделать std::map<User, Connection>, сейчас у нас два эти класса связаны.
-    User                         m_user;            //!< Пользователь.
-    State                        m_currentState;    //!< Текущее состояние.
+    User                         m_user;         //!< Пользователь.
+    State                        m_currentState; //!< Текущее состояние.
 };
 
-static auto shift(const std::string_view unhandled, uint8_t n) {
-    return std::string_view {unhandled.data() + n, unhandled.size() - n};
+static std::string shift(const std::string_view unhandled, uint8_t n)
+{
+    return {unhandled.data() + n, unhandled.size() - n};
 };
 
-static auto isValidRequest(Connection::State currectState, const std::string_view request) {
-    // @todo Можно попробовать сделать constexpr map на шаблонах.
-    static const std::map<Connection::State, Connection::State> transitionTable = {
-            {Connection::State::login,     Connection::State::password}, // login    -> password
-            {Connection::State::password,  Connection::State::calc},     // password -> calc
-            {Connection::State::calc,    Connection::State::calc}        // calc     -> calc ...
-    };
-
+static auto isValidRequest(Connection::State currectState, const std::string_view request)
+{
     /// @todo Добавить поддержку широких (последовательных) пробелов.
     const auto isLessThanTwoWords = [&request]() {
         unsigned short spaceCounter = 0;
@@ -84,7 +79,7 @@ static auto isValidRequest(Connection::State currectState, const std::string_vie
     // Если больше двух пробелов, то можем считать запрос некорректным.
     if (!isLessThanTwoWords()) return false;
 
-    Connection::State requestType = Connection::State::login;
+    Connection::State requestType;
 
     if (const auto login_position = request.find("login "); login_position == 0) {
         requestType = Connection::State::login;
@@ -98,7 +93,7 @@ static auto isValidRequest(Connection::State currectState, const std::string_vie
         return false;
     }
 
-    return requestType == transitionTable.at(currectState) || requestType == Connection::logout;
+    return currectState == requestType;
 }
 
 #endif //SERVER_SESSION_H
