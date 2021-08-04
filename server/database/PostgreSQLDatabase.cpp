@@ -1,5 +1,5 @@
 #include "PostgreSQLDatabase.h"
-#include "Structures.h"
+#include "../models/Structures.h"
 
 #include <iostream>
 #include <ozo/request.h>
@@ -24,23 +24,23 @@ PostgreSQLDatabase::PostgreSQLDatabase(boost::asio::io_context& context,
                                        , m_ozoConnectionPool(makeOzoConnectionPool(constring))
                                        {}
 
-PostgreSQLDatabase::authReturnType PostgreSQLDatabase::auth(
-        const User& user,
-        boost::asio::yield_context &yield)
+PostgreSQLDatabase::authReturnT PostgreSQLDatabase::auth(const std::string_view login,
+                                                         const std::string_view password,
+                                                         boost::asio::yield_context& yield)
 {
     // Для удобства ввода используем литералы.
     using namespace ozo::literals;
     using namespace std::chrono_literals;
+
     // Хранит в себе результат запроса
     // @todo Добавить поддержку кастомных типов.
-    ozo::rows_of<std::optional<std::int64_t>,
-                 std::optional<std::int32_t>> result;
+    ozo::rows_of<std::optional<std::int64_t>, std::optional<std::int32_t>> result;
 
     // Содержит в себе код ошибки.
     ozo::error_code errorCode;
     // Формируем запрос (я не мастер БД, поэтому можно самому поправить)
     const auto query = ozo::make_query("SELECT id, account_balance FROM users WHERE login = $1 AND password = $2",
-                                       user.login, user.password);
+                                       login, password);
     // Делаем запрос в базу данных.
     const auto connection = ozo::request(m_ozoConnectionPool[mr_context],
                                          query, 5s, ozo::into(result), yield[errorCode]);
@@ -49,16 +49,17 @@ PostgreSQLDatabase::authReturnType PostgreSQLDatabase::auth(
         handleDatabaseConnectionError<decltype(connection)>(connection, errorCode);
     }
     // Если в ответ на запрос пришли непустые данные, считаем это успехом!
-    if (const auto& value = result.front(); !result.empty()) {
-        return {std::get<0>(value), std::get<1>(value)};
+    if (!result.empty()) {
+        return { std::get<0>(result.front()), std::get<1>(result.front()) };
     }
-    // ...
+
     return {};
 }
 
-bool PostgreSQLDatabase::sendCalcResult(
-        const User& user,
-        const boost::asio::yield_context& yield)
+bool PostgreSQLDatabase::sendCalcResult(const std::int64_t userID,
+                                        const std::string_view expression,
+                                        const float resultOfExpression,
+                                        const boost::asio::yield_context& yield)
 {
     // Для удобства ввода используем литералы.
     using namespace ozo::literals;
@@ -71,7 +72,7 @@ bool PostgreSQLDatabase::sendCalcResult(
     // Формируем запрос.
     const auto query =ozo::make_query(
             "INSERT INTO sessions(user_id, date, expression, result_of_expression) VALUES($1, NOW(), $2, $3)",
-            user.id, user.expression, user.resultOfExpression);
+            userID, expression, resultOfExpression);
     // Делаем запрос в базу данных.
     const auto connection = ozo::request(m_ozoConnectionPool[mr_context],
                                          query, 2s, ozo::into(result), yield);
@@ -84,8 +85,10 @@ bool PostgreSQLDatabase::sendCalcResult(
     return true;
 }
 
-void PostgreSQLDatabase::updateBalance(const User &user, boost::asio::yield_context &yield) {
-
+void PostgreSQLDatabase::updateBalance(const std::int64_t userID,
+                                       const std::int32_t accountBalance,
+                                       boost::asio::yield_context& yield)
+{
     // Для удобства ввода используем литералы.
     using namespace ozo::literals;
     using namespace std::chrono_literals;
@@ -96,7 +99,7 @@ void PostgreSQLDatabase::updateBalance(const User &user, boost::asio::yield_cont
     // Формируем запрос.
     const auto updateQuery = ozo::make_query(
             "UPDATE users SET account_balance = $1 WHERE id = $2",
-            user.account_balance, user.id);
+            accountBalance, userID);
     const auto connection = ozo::request(m_ozoConnectionPool[mr_context],
                                                updateQuery, 2s, ozo::into(result), yield);
     // Обрабатываем ошибки в запросе ...

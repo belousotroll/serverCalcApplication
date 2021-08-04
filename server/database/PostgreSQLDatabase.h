@@ -8,8 +8,6 @@
 #include <ozo/connection_info.h>
 #include <ozo/connection_pool.h>
 
-#include "IDatabaseAccessor.h"
-
 using namespace std::string_view_literals;
 
 static auto makeOzoConnectionPool(const std::string_view constring) {
@@ -28,19 +26,27 @@ static auto makeOzoConnectionPool(const std::string_view constring) {
 using OzoConnectionPool_t = std::invoke_result_t<
         decltype(&makeOzoConnectionPool), const std::string_view>;
 
-class PostgreSQLDatabase final : public IDatabaseAccessor {
+class User;
+
+class PostgreSQLDatabase {
+    using authReturnT = std::pair<std::optional<std::int64_t>, std::optional<std::int32_t>>;
 public:
-    explicit PostgreSQLDatabase(boost::asio::io_context& context,
-                                const std::string_view constring
-                                = "user=postgres host=localhost password=postgres dbname=CalcDatabase");
-    ~PostgreSQLDatabase() override = default;
+    explicit PostgreSQLDatabase(boost::asio::io_context& context,  const std::string_view constring);
+    ~PostgreSQLDatabase() = default;
 
     /// Проверяет наличие пользователя в базе данных.
-    authReturnType auth(const User& user, boost::asio::yield_context& yield) override;
+    authReturnT auth(const std::string_view login,
+                     const std::string_view password,
+                     boost::asio::yield_context& yield);
     /// Обновляет баланс пользователя.
-    void updateBalance(const User& user, boost::asio::yield_context& yield) override;
+    void updateBalance(const std::int64_t userID,
+                       const std::int32_t accountBalance,
+                       boost::asio::yield_context& yield);
     /// Отправляет результат математического операции на сервер.
-    bool sendCalcResult(const User& user, const boost::asio::yield_context& yield) override;
+    bool sendCalcResult(const std::int64_t userID,
+                        const std::string_view expression,
+                        const float resultOfExpression,
+                        const boost::asio::yield_context& yield);
 private:
     OzoConnectionPool_t      m_ozoConnectionPool;
     boost::asio::io_context& mr_context;

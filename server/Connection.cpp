@@ -26,6 +26,8 @@ boost::asio::ip::tcp::socket &Connection::socket()
 
 void Connection::read()
 {
+    // Пока что считаем, что все работает корректно.
+    m_response = "";
     m_socket.async_read_some(
             boost::asio::buffer(m_request),
             boost::bind(&Connection::handleRead,
@@ -37,14 +39,12 @@ void Connection::read()
 void Connection::handleRead(const boost::system::error_code &errorCode, std::size_t bytesTransferred)
 {
     if (errorCode) return;
-    // Пока что считаем, что все работает корректно.
-    m_reply = "";
     // Мы помещаем данные из буфера чтения в <string_view> (наблюдатель), но без последнего
     // байта, так как он содержит в себе символ конца строки ('\n'), который нам не нужен.
     const std::string_view request(m_request.data(), bytesTransferred - 1);
     // Проверяем запрос пользователя на валидность.
     if (!isValidRequest(m_currentState, request)) {
-        m_reply = "Некорректный запрос!\n";
+        m_response = "Некорректный запрос!\n";
         write();
         return;
     }
@@ -59,15 +59,14 @@ void Connection::handleRead(const boost::system::error_code &errorCode, std::siz
             case password: {
                 m_user.password = shift(request, 9);
                 // Делаем запрос в базу данных.
-                const auto [id, balance] = mr_database.auth(m_user, yield);
+                const auto [id, balance] = mr_database.auth(m_user.login, m_user.password, yield);
                 // Пустое значение можно интерпретировать как отсутствие пользователя в базе данных.
                 // Прерываем операцию, возвращаемся к изначальному состоянию.
                 if (!id && !balance) {
-                    m_reply = "Неверный логин или пароль! Попробуйте ещё раз!\n";
+                    m_response = "Неверный логин или пароль! Попробуйте ещё раз!\n";
                     m_currentState = login;
                     break;
                 }
-                std::clog << *id << ' ' << *balance << '\n';
                 // Присваием пользователю идентификатор и баланс счета и переходим в состояние <calc>.
                 m_user.id              = *id;
                 m_user.account_balance = *balance;
@@ -78,7 +77,7 @@ void Connection::handleRead(const boost::system::error_code &errorCode, std::siz
             case calc: {
                 // Если у пользователя нулевой баланс, прерываем операцию.
                 if (m_user.account_balance <= 0) {
-                    m_reply = "Недостаточно денях, извините ...\n";
+                    m_response = "Недостаточно денях, извините ...\n";
                     break;
                 }
                 // Пытаемся посчитать ...
@@ -87,14 +86,14 @@ void Connection::handleRead(const boost::system::error_code &errorCode, std::siz
                 m_user.resultOfExpression = te_interp(m_user.expression.data(), &errorCode);
                 // Если ввели некорректные данные, прерываем операцию.
                 if (errorCode != 0) {
-                    m_reply = "Вы ввели некорректное мат. выражение! Попробуйте ещё раз!\n";
+                    m_response = "Вы ввели некорректное мат. выражение! Попробуйте ещё раз!\n";
                     break;
                 }
 
                 m_user.account_balance--;
                 // Отправляем данные в базу данных.
-                mr_database.sendCalcResult(m_user, yield);
-                mr_database.updateBalance(m_user, yield);
+                mr_database.sendCalcResult(m_user.id, m_user.expression, m_user.resultOfExpression, yield);
+                mr_database.updateBalance(m_user.id, m_user.account_balance, yield);
 
                 break;
             }
@@ -114,7 +113,7 @@ void Connection::handleRead(const boost::system::error_code &errorCode, std::siz
 void Connection::write()
 {
     m_socket.async_write_some(
-            boost::asio::buffer(m_reply),
+            boost::asio::buffer(m_response),
             boost::bind(&Connection::handleWrite,
                         shared_from_this(),
                         boost::asio::placeholders::error,

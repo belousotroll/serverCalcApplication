@@ -5,7 +5,7 @@
 #include <boost/asio/ip/tcp.hpp>
 
 #include "PostgreSQLDatabase.h"
-#include "Structures.h"
+#include "models/Structures.h"
 
 class PostgreSQLDatabase;
 class ConnectionPool;
@@ -44,19 +44,15 @@ public:
     enum State : uint8_t  { login = 0, password, calc, logout = 4};
 
 private:
-    boost::asio::ip::tcp::socket m_socket;    //!< Сокет.
-    PostgreSQLDatabase&          mr_database; //!< База данных.
+    boost::asio::ip::tcp::socket m_socket;   //!< Сокет.
+    boost::asio::io_context&     mr_context; //!< Ссылка на обработчик.
+    std::string           m_response; //!< Хранит данные для записи в сокет.
+    std::array<char, 512> m_request;  //!< Содержит данные чтения из сокета.
 
-    enum { maxLength = 128u };                 //!< Максимальная длина сообщения (в байтах).
-    std::string                  m_reply;      //!< Хранит данные для записи в сокет.
-    std::array<char, maxLength>  m_request;    //!< Содержит данные чтения из сокета.
-
-    boost::asio::io_context&     mr_context;        //!< Ссылка на обработчик.
-    ConnectionPool&              mr_connectionPool; //!< Ссылка на коллекция подключений.
-
-    // @todo Сделать std::map<User, Connection>, сейчас у нас два эти класса связаны.
-    User                         m_user;         //!< Пользователь.
-    State                        m_currentState; //!< Текущее состояние.
+    PostgreSQLDatabase& mr_database; //!< База данных.
+    ConnectionPool&     mr_connectionPool; //!< Ссылка на коллекция подключений.
+    User  m_user;         //!< Пользователь.
+    State m_currentState; //!< Текущее состояние.
 };
 
 static std::string shift(const std::string_view unhandled, uint8_t n)
@@ -64,16 +60,15 @@ static std::string shift(const std::string_view unhandled, uint8_t n)
     return {unhandled.data() + n, unhandled.size() - n};
 };
 
-static auto isValidRequest(Connection::State currectState, const std::string_view request)
+static auto isValidRequest(Connection::State& currectState, const std::string_view request)
 {
-    /// @todo Добавить поддержку широких (последовательных) пробелов.
     const auto isLessThanTwoWords = [&request]() {
-        unsigned short spaceCounter = 0;
+        unsigned short spaceCount = 0;
         for (const auto& character : request) {
-            if (isspace(character)) { spaceCounter++; }
+            if (isspace(character)) { spaceCount++; }
         }
 
-        return (spaceCounter <= 1);
+        return (spaceCount <= 1);
     };
 
     // Если больше двух пробелов, то можем считать запрос некорректным.
@@ -91,6 +86,11 @@ static auto isValidRequest(Connection::State currectState, const std::string_vie
         requestType = Connection::State::logout;
     } else {
         return false;
+    }
+
+    if (requestType == Connection::State::logout && currectState == Connection::State::calc) {
+        currectState = Connection::State::logout;
+        return true;
     }
 
     return currectState == requestType;
