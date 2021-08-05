@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.19)
+cmake_minimum_required(VERSION 3.16)
 
 project(server)
 
@@ -6,6 +6,10 @@ SET(CMAKE_CXX_COMPILER g++)
 
 if (NOT BOOST_FOUND)
     set(BOOST_ROOT "/opt/boost")
+endif()
+
+if (NOT PostgreSQL_FOUND)
+    set(PostgreSQL_INCLUDE_DIR "/usr/pgsql-13/include")
 endif()
 
 find_package(Boost 1.69.0 COMPONENTS context thread coroutine REQUIRED)
@@ -16,6 +20,9 @@ set(DATABASE_SOURCES
 
 set(MODELS_SOURCES
         models/Structures.h)
+
+set(CONFIG_DIR
+        ../config)
 
 set(SERVER_SOURCES
         Server.cpp Server.h
@@ -35,8 +42,8 @@ add_executable(${PROJECT_NAME} main.cpp
         ${SERVER_SOURCES}
         ${DATABASE_SOURCES}
         ${MODELS_SOURCES}
-        ${TINYEXPR_SOURCES})
-
+        ${TINYEXPR_SOURCES}
+        ${CONFIG_DIR}/config.h)
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
 
 target_include_directories(${PROJECT_NAME} PUBLIC database models)
@@ -45,7 +52,8 @@ target_include_directories(${PROJECT_NAME} PUBLIC
         ${Boost_INCLUDE_DIRS}
         ${EXTERNAL_LIBRARIES_DIR}/ozo/include
         ${EXTERNAL_LIBRARIES_DIR}/ozo/contrib/resource_pool/include
-        ${EXTERNAL_LIBRARIES_DIR}/tinyexpr)
+        ${EXTERNAL_LIBRARIES_DIR}/tinyexpr
+        ${CONFIG_DIR})
 
 target_link_directories(${PROJECT_NAME} PUBLIC ${Boost_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} PUBLIC pthread pqxx pq Boost::context Boost::coroutine)

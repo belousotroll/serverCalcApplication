@@ -6,27 +6,20 @@
 
 #include "Server.h"
 #include "PostgreSQLDatabase.h"
+#include "config.h"
 
 int main(int argc, char* argv[])
 {
-    if (argc != 3)
-    {
-        std::cerr << "Серверм нэм мрамботает пампромбуйте тамк: <адрес> <порт> \n";
-        return EXIT_FAILURE;
-    }
-
     try {
-        using namespace std::string_view_literals;
         // Создаем очередь задач.
         boost::asio::io_context context;
         // Необходимы для создания точки доступа.
-        auto address = boost::asio::ip::address::from_string(argv[1]);
-        auto port    = std::atoi(argv[2]);
+        auto address = boost::asio::ip::address::from_string(config::net::address);
+        auto port    = config::net::port;
         // Создаем точку доступа по заданным через консоль адресу и порту.
         boost::asio::ip::tcp::endpoint endpoint(address, port);
         // Создаем базу данных.
-        constexpr auto constring = "user=postgres host=localhost password=postgres dbname=CalcDatabase"sv;
-        PostgreSQLDatabase database(context, constring);
+        PostgreSQLDatabase database(context, config::db::constring);
         // Создаем сервер.
         Server localServer(context, database, endpoint);
         // Запускам сервер.
