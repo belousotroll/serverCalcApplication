@@ -1,6 +1,6 @@
 [submodule "external/ozo"]
 	path = external/ozo
 	url = https://github.com/yandex/ozo
-[submodule "external/tinyexpr"]
-	path = external/tinyexpr
+[submodule "external/tinyexpr/tinyexpr"]
+	path = external/tinyexpr/tinyexpr
 	url = https://github.com/codeplea/tinyexpr

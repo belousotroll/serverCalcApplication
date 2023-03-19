@@ -5,8 +5,8 @@
 #include <boost/asio/placeholders.hpp>
 #include <boost/asio/spawn.hpp>
 
-#include "PostgreSQLDatabase.h"
-#include "Connection.h"
+#include <database/PostgreSQLDatabase.h>
+#include <Connection.h>
 
 Server::Server(boost::asio::io_context& context,
                PostgreSQLDatabase& database,

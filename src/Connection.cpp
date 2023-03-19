@@ -6,9 +6,9 @@
 #include <boost/asio/placeholders.hpp>
 #include <boost/asio/spawn.hpp>
 
-#include "PostgreSQLDatabase.h"
-#include "ConnectionPool.h"
-#include "Connection.h"
+#include <database/PostgreSQLDatabase.h>
+#include <ConnectionPool.h>
+#include <Connection.h>
 
 Connection::Connection(boost::asio::io_context& context,
                        PostgreSQLDatabase& database,

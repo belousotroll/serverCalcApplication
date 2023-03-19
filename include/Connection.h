@@ -4,8 +4,8 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
 
-#include "PostgreSQLDatabase.h"
-#include "models/Structures.h"
+#include <database/PostgreSQLDatabase.h>
+#include <models/Structures.h>
 
 class PostgreSQLDatabase;
 class ConnectionPool;

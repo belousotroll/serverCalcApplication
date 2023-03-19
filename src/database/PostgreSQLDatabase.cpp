@@ -1,5 +1,6 @@
-#include "PostgreSQLDatabase.h"
-#include "../models/Structures.h"
+
+#include <database/PostgreSQLDatabase.h>
+#include <models/Structures.h>
 
 #include <iostream>
 #include <ozo/request.h>

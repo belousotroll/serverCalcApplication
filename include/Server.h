@@ -5,7 +5,7 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio.hpp>
 
-#include "ConnectionPool.h"
+#include <ConnectionPool.h>
 
 class Connection;
 class PostgreSQLDatabase;

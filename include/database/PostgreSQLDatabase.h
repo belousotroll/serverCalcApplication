@@ -8,6 +8,7 @@
 #include <ozo/connection_info.h>
 #include <ozo/connection_pool.h>
 
+
 using namespace std::string_view_literals;
 
 static auto makeOzoConnectionPool(const std::string_view constring) {
