@@ -1,0 +1,36 @@
+name: C++ Build
+
+on:
+  push:
+    branches:
+      - main
+      - '/^[0-9]+-(feat|refactor|fix)-.*/'
+  pull_request:
+    branches:
+      - main
+      - '/^[0-9]+-(feat|refactor|fix)-.*/'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install build dependencies
+        run: sudo apt-get install -y build-essential cmake
+
+      - name: Build project
+        run: |
+          mkdir -p build
+          cd build
+          cmake ..
+          make
+
+      - name: Archive artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: build-artifact
+          path: |
+            build/serverCalcApplication
