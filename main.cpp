@@ -1,4 +1,3 @@
-
 #define BOOST_COROUTINES_NO_DEPRECATION_WARNING 0;
 
 #include <boost/asio/io_context.hpp>
@@ -7,15 +6,23 @@
 #include <Server.h>
 #include <database/PostgreSQLDatabase.h>
 #include <common/config.h>
+#include <common/ProgramOptions.h>
 
 int main(int argc, char* argv[])
 {
     try {
+        auto options = getProgramOptions(argc, argv);
+
+        if (!options)
+        {
+            return EXIT_SUCCESS;
+        }
+
         boost::asio::io_context context;
         auto address = boost::asio::ip::address::from_string(config::net::address);
         auto port    = config::net::port;
         boost::asio::ip::tcp::endpoint endpoint(address, port);
-        PostgreSQLDatabase database(context, config::db::constring);
+        PostgreSQLDatabase database(context, options->connectionInfo);
 
         Server localServer(context, database, endpoint);
         localServer.run();
