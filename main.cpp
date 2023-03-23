@@ -24,8 +24,8 @@ int main(int argc, char* argv[])
         boost::asio::ip::tcp::endpoint endpoint(address, port);
         PostgreSQLDatabase database(context, options->connectionInfo);
 
-        Server localServer(context, database, endpoint);
-        localServer.run();
+        Server server(context, database, endpoint);
+        server.run();
     } catch (const std::exception& exc) {
         std::cerr << exc.what() << std::endl;
         return EXIT_FAILURE;
