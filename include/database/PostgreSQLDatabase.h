@@ -8,10 +8,12 @@
 #include <ozo/connection_info.h>
 #include <ozo/connection_pool.h>
 
+#include <database/IDatabase.h>
+#include <database/ConnectionInfo.h>
 
-using namespace std::string_view_literals;
+namespace detail {
 
-static auto makeOzoConnectionPool(const std::string_view constring) {
+inline auto makeOzoConnectionPool(const std::string_view constring) {
     auto connectionInfo = ozo::connection_info(constring.data());
     ozo::connection_pool_config  connectionConfig;
 
@@ -20,37 +22,34 @@ static auto makeOzoConnectionPool(const std::string_view constring) {
      * Или через initializer list: ozo::connection_info {<Params...>};
      * см. документацию: https://github.com/yandex/ozo
      * */
-
     return ozo::make_connection_pool(connectionInfo, connectionConfig);
 }
 
-using OzoConnectionPool_t = std::invoke_result_t<
-        decltype(&makeOzoConnectionPool), const std::string_view>;
+}
 
-class User;
+class PostgreSQLDatabase : IDatabase {
 
-class PostgreSQLDatabase {
-    using authReturnT = std::pair<std::optional<std::int64_t>, std::optional<std::int32_t>>;
+    using OzoConnectionPoolT = std::invoke_result_t<
+        decltype(&detail::makeOzoConnectionPool), const std::string_view>;
+
 public:
-    explicit PostgreSQLDatabase(boost::asio::io_context& context,  const std::string_view constring);
+    explicit PostgreSQLDatabase(boost::asio::io_context & context,  ConnectionInfoV connectionInfo);
     ~PostgreSQLDatabase() = default;
 
-    /// Проверяет наличие пользователя в базе данных.
-    authReturnT auth(const std::string_view login,
+    AuthResult auth(const std::string_view login,
                      const std::string_view password,
-                     boost::asio::yield_context& yield);
-    /// Обновляет баланс пользователя.
+                     boost::asio::yield_context& yield) override;
+
     void updateBalance(const std::int64_t userID,
                        const std::int32_t accountBalance,
-                       boost::asio::yield_context& yield);
-    /// Отправляет результат математического операции на сервер.
+                       boost::asio::yield_context& yield) override;
+
     bool sendCalcResult(const std::int64_t userID,
                         const std::string_view expression,
                         const float resultOfExpression,
-                        const boost::asio::yield_context& yield);
+                        const boost::asio::yield_context& yield) override;
 private:
-    OzoConnectionPool_t      m_ozoConnectionPool;
-    boost::asio::io_context& mr_context;
+    OzoConnectionPoolT m_connectionPool;
 };
 
 #endif //SERVER_POSTGRESQLDATABASE_H
