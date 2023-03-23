@@ -21,7 +21,13 @@ set(CMAKE_CXX_FLAGS_DEBUG "-O0 -fno-inline")
 set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
 
-find_package(Boost 1.69.0 COMPONENTS context thread coroutine REQUIRED)
+find_package(Boost 1.69.0 COMPONENTS
+        context
+        thread
+        coroutine
+        program_options
+        system
+        REQUIRED)
 
 add_subdirectory(external)
 
@@ -43,9 +49,10 @@ set(${PROJECT_NAME}_LIBS
         yandex::ozo
         pthread
         pqxx
-        pq
-        Boost::context
-        Boost::coroutine)
+        ${Boost_LIBRARIES}
+        fmt)
+
+MESSAGE(${${PROJECT_NAME}_CPP_SOURCES})
 
 add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_CPP_SOURCES} main.cpp)
 
@@ -54,5 +61,6 @@ target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
 target_include_directories(${PROJECT_NAME} PRIVATE
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
         ${${PROJECT_NAME}_INCLUDES})
+
 target_link_libraries(${PROJECT_NAME} PRIVATE ${${PROJECT_NAME}_LIBS})
 
