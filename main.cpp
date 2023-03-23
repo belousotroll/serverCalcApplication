@@ -9,7 +9,8 @@
 
 int main(int argc, char* argv[])
 {
-    try {
+    try
+    {
         auto options = getProgramOptions(argc, argv);
 
         if (!options)
@@ -25,7 +26,9 @@ int main(int argc, char* argv[])
 
         Server server(context, database, endpoint);
         server.run();
-    } catch (const std::exception& exc) {
+    }
+    catch (const std::exception & exc)
+    {
         std::cerr << exc.what() << std::endl;
         return EXIT_FAILURE;
     }
