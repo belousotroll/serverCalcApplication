@@ -5,7 +5,6 @@
 
 #include <Server.h>
 #include <database/PostgreSQLDatabase.h>
-#include <common/config.h>
 #include <common/ProgramOptions.h>
 
 int main(int argc, char* argv[])
@@ -19,8 +18,8 @@ int main(int argc, char* argv[])
         }
 
         boost::asio::io_context context;
-        auto address = boost::asio::ip::address::from_string(config::net::address);
-        auto port    = config::net::port;
+        auto address = boost::asio::ip::address::from_string("localhost");
+        auto port    = 0;
         boost::asio::ip::tcp::endpoint endpoint(address, port);
         PostgreSQLDatabase database(context, options->connectionInfo);
 
